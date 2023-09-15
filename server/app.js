@@ -1,9 +1,9 @@
-const cookieParser = require('cookie-parser');
-const express = require('express');
-const userRoutes = require('./routes/user.routes')
-const cors = require('cors');
-const errorMiddleware = require('./middleware/errorMiddleware');
-const morgan = require('morgan');
+import cookieParser from 'cookie-parser';
+import express from 'express';
+import userRoutes from './routes/user.routes.js';
+import cors from 'cors';
+import errorMiddleware from './middleware/errorMiddleware.js';
+import morgan from 'morgan';
 
 const app = express();
 
@@ -30,4 +30,4 @@ app.all('*', (req, res) => {
 // Code for next() -> generic middleware 
 app.use(errorMiddleware);
 
-module.exports = app;
+export default app;

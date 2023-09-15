@@ -1,11 +1,14 @@
-const express = require('express');
+import express from 'express';
 const Router = express.Router();
-const { signup, login, logout, getProfile } = require('../controllers/user.controller');
-const { isLoggedIn } = require('../middleware/auth.middleware');
+import { signup, login, logout, getProfile, forgotPassword, resetPassword } from '../controllers/user.controller.js';
+import { isLoggedIn } from '../middleware/auth.middleware.js';
+import upload from '../middleware/multer.middleware.js';
 
-Router.post('/signup', signup);
+Router.post('/signup', upload.single('avatar'), signup);
 Router.post('/login', login);
 Router.get('/logout', logout);
 Router.get('/me', isLoggedIn, getProfile);
+Router.get('/forgot', forgotPassword);
+Router.get('/reset/:resetToken', resetPassword);
 
-module.exports = Router;
+export default Router;

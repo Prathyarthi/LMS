@@ -1,3 +1,5 @@
+import AppError from '../utils/appError.js';
+
 const isLoggedIn = function (req, res, next) {
     const { token } = req.cookies;
 
@@ -15,6 +17,6 @@ const isLoggedIn = function (req, res, next) {
     next();
 }
 
-module.exports = {
+export {
     isLoggedIn
 }

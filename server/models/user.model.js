@@ -1,6 +1,7 @@
-const { Schema, model } = require('mongoose');
-const bcrypt = require('bcryptjs');
-const jwt = require('jsonwebtoken');
+import { Schema, model } from 'mongoose';
+import bcrypt from 'bcryptjs';
+import jwt from 'jsonwebtoken';
+import crypto from 'crypto';
 
 const userSchema = new Schema({
     fullName: {
@@ -47,7 +48,7 @@ const userSchema = new Schema({
 });
 
 // This is for change password -> before saving check whether the password is modified or not , if it is modified we will encrypt it using bcrypt
-userSchema.pre('save', async function () {
+userSchema.pre('save', async function (next) {
     if (!this.isModified('password')) {
         return next();
     }
@@ -66,10 +67,21 @@ userSchema.methods = {
                 expiresIn: process.env.JWT_EXPIRY
             }
         )
+    },
+    generatePasswordToken: async function () {
+        const resetToken = crypto.randomBytes(20).toString('hex');
+
+        this.forgotPasswordToken = crypto
+            .createHash('sha65')
+            .update(resetToken)
+            .digest('hex')
+            ;
+        this.forgotPasswordExpiry = Date.now() + 15 * 60 * 1000;  // 15 min from now
+        return resetToken;
     }
 }
 
 // Parameters -> model('collection name for db' , schema name)
 const user = model('user', userSchema);
 
-module.exports = user;
+export default user;

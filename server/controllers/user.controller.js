@@ -1,5 +1,7 @@
-const { default: AppError } = require("../utils/appError");
-const user = require('../models/user.model')
+import AppError from "../utils/appError.js";
+import user from '../models/user.model.js';
+import cloudinary from 'cloudinary';
+import sendEmail from "../utils/sendEmail.js";
 
 const cookieOptions = {
     secure: true,
@@ -7,11 +9,11 @@ const cookieOptions = {
     httpOnly: true
 }
 
-const signup = async (req, res) => {
+const signup = async (req, res, next) => {
     const { fullName, email, password } = req.body;
 
     if (!fullName || !email || !password) {
-        return next(new AppError('All fields are required!'), 400);
+        return next(new AppError('All fields are required!', 400));
     }
 
     const userExists = await user.findOne({ email });
@@ -20,7 +22,7 @@ const signup = async (req, res) => {
         return next(new AppError('Email already exists!', 400));
     }
 
-    const user = await user.create({
+    const User = await user.create({
         fullName,
         email,
         password,
@@ -30,19 +32,44 @@ const signup = async (req, res) => {
         }
     })
 
-    if (!user) {
+    if (!User) {
         return next(new AppError('User registration failed!', 400));
     }
 
-    await user.save();
+    console.log('File Details : ', JSON.stringify(req.file));
+    if (req.file) {
+        try {
+            const result = await cloudinary.v2.uploader.upload(req.file.path, {
+                folder: 'lms',
+                width: 250,
+                height: 250,
+                gravity: 'faces',
+                crop: 'fill'
+            });
 
-    user.password = undefined;   // To not send the password again as response(bad practice)
+            if (result) {
+                User.avatar.public_id = result.public_id;
+                User.avatar.secure_url = result.secure_url;
+
+                // Remove file from the local server
+                //fs.rem(`upload/${req.file.filename}`);
+            }
+        } catch (e) {
+            return next(new AppError(e.message || 'File not uploaded, please try again', 500));
+        }
+    }
+
+    await User.save();
+
+    const token = await user.generateJWTToken();
+    res.cookie('token', token, cookieOptions);
+
+    User.password = undefined;   // To not send the password again as response(bad practice)
 
     res.status(200).json({
         success: true,
         message: 'User registered successfully',
-        user
-
+        User
     })
 }
 
@@ -53,29 +80,29 @@ const login = async (req, res) => {
         return next(new AppError('All fields are required!'), 400);
     }
 
-    const userExists = await user.findOne({
+    const User = await user.findOne({
         email
     }).select('+password');   // To find that particular email with the password from the database
 
-    if (!user || user.comparePassword(password)) {
+    if (!User || User.comparePassword(password)) {
         return next(new AppError("Email and password doesn't match!", 400));
     }
 
     const token = await user.generateJWTToken();
-    user.password = undefined;
+    User.password = undefined;
 
     res.cookie('token', token, cookieOptions);
 
     res.status(201).json({
         success: true,
         message: 'User registered successfully!',
-        user
+        User
     })
 }
 
 const logout = (req, res) => {
     res.cookie('token', null, {
-        secur: true,
+        secure: true,
         maxAge: 0,
         httpOnly: true
     });
@@ -87,18 +114,58 @@ const logout = (req, res) => {
 }
 
 const getProfile = (req, res) => {
-    const user = user.findById(req.user.id);
+    const User = user.findById(req.user.id);
 
     res.status(200).json({
         success: true,
         message: 'User Details',
-        user
+        User
     })
 }
 
-module.exports = {
+const forgotPassword = async (req, res) => {
+    const { email } = req.body;
+
+    if (!email) {
+        return next(new AppError("Email is required!", 400));
+    }
+
+    const User = await User.findOne({ email });
+
+    if (!User) {
+        return next(new AppError("Email not Found!", 400));
+    }
+
+    const resetToken = await User.generatePasswordToken();
+    await user.save();
+
+    const resetPasswordUrl = `${process.env.FRONTEND_URL}/reset-password/${resetToken}`;
+    const subject = 'Reset Password';
+    const message = `You can change your password by clicking on this URL -> ${resetPasswordUrl}`;
+
+    try {
+        await sendEmail(email, subject, message);
+
+        res.status(200).json({
+            success: true,
+            message: `Reset Password token is to ${email} successfully!`
+        })
+    } catch (e) {
+        User.forgotPasswordToken = undefined;
+        User.forgotPasswordExpiry = undefined;
+        await next(new AppError(e.message, 500));
+    }
+}
+
+const resetPassword = async (req, res) => {
+
+}
+
+export {
     signup,
     login,
     logout,
-    getProfile
+    getProfile,
+    forgotPassword,
+    resetPassword
 }
