@@ -4,6 +4,7 @@ import { signup, login, logout, getProfile, forgotPassword, resetPassword } from
 import { isLoggedIn } from '../middleware/auth.middleware.js';
 import upload from '../middleware/multer.middleware.js';
 
+
 Router.post('/signup', upload.single('avatar'), signup);
 Router.post('/login', login);
 Router.get('/logout', logout);

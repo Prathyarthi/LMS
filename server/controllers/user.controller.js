@@ -27,8 +27,8 @@ const signup = async (req, res, next) => {
         email,
         password,
         avatar: {
-            public_id: email,
-            secure_url: ''
+            public_id: email, 
+            secure_url: 'https://res.cloudinary.com/fgfdkj78/avatar.png'
         }
     })
 
@@ -61,7 +61,7 @@ const signup = async (req, res, next) => {
 
     await User.save();
 
-    const token = await user.generateJWTToken();
+    const token = await User.generateJWTToken();
     res.cookie('token', token, cookieOptions);
 
     User.password = undefined;   // To not send the password again as response(bad practice)
@@ -73,7 +73,7 @@ const signup = async (req, res, next) => {
     })
 }
 
-const login = async (req, res) => {
+const login = async (req, res, next) => {
     const { email, password } = req.body;
 
     if (!email || !password) {
@@ -84,11 +84,11 @@ const login = async (req, res) => {
         email
     }).select('+password');   // To find that particular email with the password from the database
 
-    if (!User || User.comparePassword(password)) {
+    if (!User || !User.comparePassword(password)) {
         return next(new AppError("Email and password doesn't match!", 400));
     }
 
-    const token = await user.generateJWTToken();
+    const token = await User.generateJWTToken();
     User.password = undefined;
 
     res.cookie('token', token, cookieOptions);
@@ -141,7 +141,7 @@ const forgotPassword = async (req, res) => {
 
     const resetPasswordUrl = `${process.env.FRONTEND_URL}/reset-password/${resetToken}`;
     const subject = 'Reset Password';
-    const message = `You can change your password by clicking on this URL -> ${resetPasswordUrl}`;
+    const message = `You can change your password by clicking on this URL -><a>${resetPasswordUrl}<a/>`;
 
     try {
         await sendEmail(email, subject, message);
@@ -158,6 +158,35 @@ const forgotPassword = async (req, res) => {
 }
 
 const resetPassword = async (req, res) => {
+    const { resetToken } = req.params;
+    const { password } = req.body;
+
+    const User = await user.findOne({
+        forgotPasswordToken,
+        forgotPasswordExpiry: { $gt: Date.now() }
+    })
+
+    this.forgotPasswordToken = crypto
+        .createHash('sha65')
+        .update(resetToken)
+        .digest('hex')
+        ;
+
+    if (!User) {
+        return next(new AppError("Token is invalid or expired, please try again!", 400));
+    }
+
+    User.password = password;
+    // After reset, we are setting forgotPasswordExpiry , forgotPasswordToken to undefined 
+    User.forgotPasswordExpiry = undefined;
+    User.forgotPasswordToken = undefined;
+
+    await User.save();
+
+    res.status(200).json({
+        success: true,
+        message: 'Password changed sucessfully!'
+    })
 
 }
 
