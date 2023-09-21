@@ -1,6 +1,7 @@
 import cookieParser from 'cookie-parser';
 import express from 'express';
 import userRoutes from './routes/user.routes.js';
+import courseRoutes from './routes/user.routes.js';
 import cors from 'cors';
 import errorMiddleware from './middleware/errorMiddleware.js';
 import morgan from 'morgan';
@@ -22,6 +23,7 @@ app.use(morgan('dev'));    // morgan package is used to check the logs like what
 app.use(cookieParser());
 
 app.use('/api/v1/user', userRoutes);
+app.use('/api/v1/courses', courseRoutes);
 
 app.all('*', (req, res) => {
     res.status(404).send("Oops! 404 Page not found!");
