@@ -1,4 +1,4 @@
-import Course from "../models/course.model";
+import Course from "../models/course.model.js";
 import AppError from "../utils/appError.js";
 import cloudinary from 'cloudinary';
 import fs from 'fs/promises';

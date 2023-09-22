@@ -53,7 +53,7 @@ const signup = async (req, res, next) => {
                 User.avatar.secure_url = result.secure_url;
 
                 // Remove file from the local server
-                fs.rem(`upload/${req.file.filename}`);
+                fs.rm(`uploads/${req.file.filename}`);
             }
         } catch (e) {
             return next(new AppError(e.message || 'File not uploaded, please try again', 500));
